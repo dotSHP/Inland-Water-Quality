@@ -1,0 +1,1239 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Water Quality Monitoring Dashboard</title>
+
+        <!-- Leaflet -->
+        <link
+            rel="stylesheet"
+            href="https://unpkg.com/leaflet/dist/leaflet.css"
+        />
+
+        <!-- ECharts -->
+        <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                margin: 0;
+                font-family: Arial, Helvetica, sans-serif;
+                background: #eef2f6;
+                overflow: hidden;
+                width: 100vw;
+                height: 100vh;
+            }
+
+            /* UNIVERSITY BANNER */
+
+            .uni-banner {
+                background: #fff3cd;
+                color: #5a4200;
+                border-bottom: 2px solid #f0c040;
+                padding: 10px 20px;
+                font-size: 0.88rem;
+                text-align: center;
+                line-height: 1.4;
+                z-index: 1000;
+            }
+
+            .uni-banner strong {
+                color: #3d2c00;
+            }
+
+            /* TOP NAVIGATION */
+
+            .topbar {
+                height: 6vh;
+                background: #17324d;
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0 20px;
+                border-bottom: 1px solid #0e2235;
+            }
+
+            .logo {
+                font-size: 1rem;
+                font-weight: bold;
+            }
+
+            .nav-tabs {
+                display: flex;
+                gap: 0.6vw;
+            }
+
+            .nav-tabs button {
+                background: transparent;
+                border: none;
+                color: white;
+                padding: 1vh 1vw;
+                cursor: pointer;
+                border-radius: 6px;
+                transition: 0.2s;
+                font-size: 0.82rem;
+            }
+
+            .nav-tabs button:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+
+            .nav-tabs button.active {
+                background: #2b5d8c;
+            }
+
+            /* MAIN LAYOUT */
+
+            .layout {
+                display: flex;
+                height: calc(94vh - 40px);
+                width: 100%;
+            }
+
+            /* SIDEBAR */
+
+            .sidebar {
+                width: 18vw;
+                min-width: 260px;
+                max-width: 360px;
+                background: white;
+                border-right: 1px solid #d6dce3;
+                overflow-y: auto;
+                padding: 2vh 1vw;
+            }
+
+            .sidebar h2 {
+                margin-top: 0;
+                font-size: 1.1rem;
+                color: #17324d;
+            }
+
+            .filter-group {
+                margin-bottom: 20px;
+            }
+
+            .filter-group label {
+                display: block;
+                font-size: 0.75rem;
+                font-weight: bold;
+                margin-bottom: 8px;
+                color: #3c4a59;
+            }
+
+            .filter-group select,
+            .filter-group input {
+                width: 100%;
+                padding: 1vh 0.7vw;
+                border: 1px solid #cbd3dc;
+                border-radius: 6px;
+                background: white;
+                font-size: 0.82rem;
+            }
+
+            .parameter-list {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                margin-top: 10px;
+            }
+
+            .parameter-item {
+                display: flex;
+                align-items: center;
+                gap: 0.6vw;
+                padding: 0.8vh 0.6vw;
+                border-radius: 6px;
+                background: #f7f9fb;
+                border: 1px solid #e3e8ef;
+            }
+
+            .parameter-item:hover {
+                background: #eef4fa;
+            }
+
+            .station-card {
+                margin-top: 3vh;
+                background: #f7f9fb;
+                border: 1px solid #dbe3ec;
+                border-radius: 0.8rem;
+                padding: 15px;
+            }
+
+            .station-card h3 {
+                margin-top: 0;
+                color: #17324d;
+            }
+
+            .station-detail {
+                margin-bottom: 8px;
+                font-size: 0.82rem;
+            }
+
+            /* CONTENT */
+
+            .content {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+            }
+
+            #map {
+                flex: 1;
+                width: 100%;
+            }
+
+            /* CHART PANEL */
+
+            .chart-panel {
+                height: 28vh;
+                background: white;
+                border-top: 1px solid #d6dce3;
+                padding: 1vh 0.7vw;
+                display: flex;
+                flex-direction: column;
+            }
+
+            #chart {
+                flex: 1;
+                width: 100%;
+            }
+
+            .parameter-buttons {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5vw;
+                padding: 1vh 0;
+                justify-content: center;
+            }
+
+            .param-btn {
+                background: #f7f9fb;
+                border: 1px solid #e3e8ef;
+                border-radius: 6px;
+                padding: 0.5vh 1vw;
+                cursor: pointer;
+                font-size: 0.75rem;
+                transition: 0.2s;
+            }
+
+            .param-btn:hover {
+                background: #eef4fa;
+            }
+
+            .date-range {
+                display: flex;
+                align-items: center;
+                gap: 0.5vw;
+            }
+
+            .date-range input {
+                padding: 0.5vh 0.7vw;
+                border: 1px solid #cbd3dc;
+                border-radius: 6px;
+                font-size: 0.82rem;
+            }
+
+            .date-range span {
+                color: #3c4a59;
+                font-weight: bold;
+            }
+
+            /* SUMMARY SECTION */
+
+            .summary-section {
+                display: flex;
+                justify-content: space-around;
+                padding: 2vh 2vw;
+                background: white;
+                border-bottom: 1px solid #d6dce3;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            }
+
+            .summary-item {
+                text-align: center;
+                flex: 1;
+            }
+
+            .summary-item h3 {
+                margin: 0 0 1vh 0;
+                font-size: 0.9rem;
+                color: #3c4a59;
+                font-weight: normal;
+            }
+
+            .summary-value {
+                font-size: 2rem;
+                font-weight: bold;
+                color: #17324d;
+            }
+
+            /* DATA PANEL */
+
+            .data-panel {
+                height: 28vh;
+                background: white;
+                border-top: 1px solid #d6dce3;
+                padding: 1vh 1vw;
+                overflow-y: auto;
+            }
+
+            .data-panel h3 {
+                margin-top: 0;
+                color: #17324d;
+                font-size: 1.1rem;
+            }
+
+            .data-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 0.85rem;
+            }
+
+            .data-table th,
+            .data-table td {
+                border: 1px solid #d6dce3;
+                padding: 0.5vh 0.5vw;
+                text-align: left;
+            }
+
+            .data-table th {
+                background: #f8fafc;
+                color: #17324d;
+                font-weight: bold;
+            }
+
+            /* DATA PAGE */
+
+            .data-page {
+                padding: 3vh 2vw;
+                background: white;
+                height: calc(94vh - 40px);
+                overflow-y: auto;
+            }
+
+            .page-intro {
+                color: #5a6472;
+                font-size: 0.95rem;
+                margin-bottom: 3vh;
+            }
+
+            /* DOCUMENTS GRID */
+
+            .doc-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+                gap: 1.5vh 1.5vw;
+            }
+
+            .doc-card {
+                display: flex;
+                align-items: flex-start;
+                gap: 1vw;
+                background: #f8fafc;
+                border: 1px solid #dbe3ec;
+                border-radius: 10px;
+                padding: 1.5vh 1.2vw;
+            }
+
+            .doc-icon {
+                font-size: 2rem;
+                flex-shrink: 0;
+                margin-top: 2px;
+            }
+
+            .doc-info {
+                flex: 1;
+            }
+
+            .doc-info h3 {
+                margin: 0 0 0.5vh 0;
+                color: #17324d;
+                font-size: 1rem;
+            }
+
+            .doc-info p {
+                margin: 0 0 0.5vh 0;
+                font-size: 0.83rem;
+                color: #4a5668;
+                line-height: 1.5;
+            }
+
+            .doc-meta {
+                font-size: 0.75rem;
+                color: #7a8b9a;
+            }
+
+            .doc-btn {
+                flex-shrink: 0;
+                background: #17324d;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 0.6vh 1vw;
+                font-size: 0.8rem;
+                cursor: pointer;
+                text-decoration: none;
+                display: inline-block;
+                align-self: center;
+                white-space: nowrap;
+            }
+
+            .doc-btn:hover {
+                background: #2b5d8c;
+            }
+
+            /* METADATA PAGE */
+
+            .metadata-page {
+                padding: 3vh 2vw;
+                background: white;
+                height: calc(94vh - 40px);
+                overflow-y: auto;
+            }
+
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+
+            .metadata-page .container {
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+
+            .metadata-page h1 {
+                color: #17324d;
+            }
+
+            .metadata-section {
+                margin-bottom: 4vh;
+                border: 1px solid #d6dce3;
+                border-radius: 8px;
+                padding: 2vh 2vw;
+                background: #f8fafc;
+            }
+
+            .metadata-section h2 {
+                color: #17324d;
+                margin-top: 0;
+                border-bottom: 2px solid #2b78c5;
+                padding-bottom: 1vh;
+            }
+
+            .data-preview {
+                margin-bottom: 3vh;
+            }
+
+            .data-preview h3 {
+                color: #3c4a59;
+                font-size: 1.1rem;
+                margin-bottom: 1vh;
+            }
+
+            .preview-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 0.85rem;
+                background: white;
+            }
+
+            .preview-table th,
+            .preview-table td {
+                border: 1px solid #d6dce3;
+                padding: 0.8vh 1vw;
+                text-align: left;
+            }
+
+            .preview-table th {
+                background: #17324d;
+                color: white;
+                font-weight: bold;
+            }
+
+            .description {
+                margin-bottom: 3vh;
+            }
+
+            .description h3 {
+                color: #3c4a59;
+                font-size: 1.1rem;
+                margin-bottom: 1vh;
+            }
+
+            .description p {
+                line-height: 1.6;
+                color: #555;
+            }
+
+            .metadata-info {
+                margin-bottom: 3vh;
+            }
+
+            .metadata-info h3 {
+                color: #3c4a59;
+                font-size: 1.1rem;
+                margin-bottom: 1vh;
+            }
+
+            .metadata-info ul {
+                list-style-type: none;
+                padding: 0;
+            }
+
+            .metadata-info li {
+                margin-bottom: 0.5vh;
+                padding: 0.5vh 0;
+                border-bottom: 1px solid #e3e8ef;
+            }
+
+            .metadata-info strong {
+                color: #17324d;
+            }
+
+            .service-links {
+                margin-bottom: 2vh;
+            }
+
+            .service-links h3 {
+                color: #3c4a59;
+                font-size: 1.1rem;
+                margin-bottom: 1vh;
+            }
+
+            .service-links a {
+                color: #2b78c5;
+                text-decoration: none;
+            }
+
+            .service-links a:hover {
+                text-decoration: underline;
+            }
+
+            /* RESPONSIVE */
+
+            /* GOVERNMENT DASHBOARD STYLE */
+
+            .sidebar {
+                box-shadow: inset -1px 0 0 #d7dee7;
+                background: #f8fafc;
+            }
+
+            .topbar {
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            }
+
+            .chart-panel {
+                background: #ffffff;
+            }
+
+            #map {
+                background: #dfe7ef;
+            }
+
+            .leaflet-control-container .leaflet-top,
+            .leaflet-control-container .leaflet-bottom {
+                font-size: 0.8rem;
+            }
+
+            @media (max-width: 900px) {
+                .layout {
+                    flex-direction: column;
+                }
+
+                .sidebar {
+                    width: 100%;
+                    height: 300px;
+                }
+
+                .chart-panel {
+                    height: 250px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <!-- TOP NAVIGATION -->
+
+        <!-- UNIVERSITY PROJECT BANNER -->
+        <div class="uni-banner">
+            ⚠️ This is a university project created for academic purposes only.
+            It is <strong>not</strong> an official government or authoritative
+            site. Data shown is for demonstration purposes.
+        </div>
+
+        <div class="topbar">
+            <div class="logo">Water Quality Monitoring Dashboard</div>
+
+            <div class="nav-tabs">
+                <button class="active" onclick="showTab('map')">
+                    Map View
+                </button>
+
+                <button onclick="showTab('documents')">Documents</button>
+
+                <button onclick="showTab('metadata')">Metadata</button>
+            </div>
+        </div>
+
+        <!-- MAIN LAYOUT -->
+
+        <div class="layout" id="mapLayout">
+            <!-- SIDEBAR -->
+
+            <div class="sidebar">
+                <h2>Filters</h2>
+
+                <div class="filter-group">
+                    <label>Catchment Area</label>
+
+                    <select id="catchmentFilter">
+                        <option value="all">All Catchments</option>
+                        <option value="Upper Vaal">Upper Vaal</option>
+                        <option value="Lower Vaal">Lower Vaal</option>
+                        <option value="Orange River">Orange River</option>
+                        <option value="Breede River">Breede River</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Time Frame</label>
+
+                    <div class="date-range">
+                        <input
+                            type="date"
+                            id="fromDate"
+                            min="2017-01-01"
+                            max="2026-12-31"
+                            value="2017-01-01"
+                        />
+                        <span>to</span>
+                        <input
+                            type="date"
+                            id="toDate"
+                            min="2017-01-01"
+                            max="2026-12-31"
+                            value="2026-12-31"
+                        />
+                    </div>
+                </div>
+
+                <div class="station-card">
+                    <h3>Selected Station</h3>
+
+                    <div class="station-detail">
+                        <strong>Name:</strong>
+                        <span id="stationName">Station A</span>
+                    </div>
+
+                    <div class="station-detail">
+                        <strong>Catchment:</strong>
+                        <span id="stationCatchment">Upper Vaal</span>
+                    </div>
+
+                    <div class="station-detail">
+                        <strong>Location:</strong>
+                        <span id="stationLocation">—</span>
+                    </div>
+
+                    <div class="station-detail">
+                        <strong>Water Type:</strong>
+                        <span id="stationWaterType">—</span>
+                    </div>
+
+                    <div class="station-detail">
+                        <strong>Monitor Type:</strong>
+                        <span id="stationMonitorType">—</span>
+                    </div>
+
+                    <div class="station-detail">
+                        <strong>Latest Reading:</strong>
+                        <span id="latestReading">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MAIN CONTENT -->
+
+            <div class="content">
+                <iframe
+                    id="mapFrame"
+                    src="qgis2web/index.html"
+                    style="
+                        border: none;
+                        width: 100%;
+                        height: 100%;
+                        display: block;
+                        flex: 1;
+                    "
+                ></iframe>
+
+                <div class="chart-panel">
+                    <div id="chart"></div>
+                    <div class="parameter-buttons">
+                        <button
+                            class="param-btn active"
+                            data-param="Escherichia coli (MPN)"
+                        >
+                            Escherichia coli (MPN)
+                        </button>
+                        <button class="param-btn" data-param="COD (MGL)">
+                            COD (MGL)
+                        </button>
+                        <button class="param-btn" data-param="pH">pH</button>
+                        <button class="param-btn" data-param="Dissolved Oxygen">
+                            Dissolved Oxygen
+                        </button>
+                        <button class="param-btn" data-param="Turbidity">
+                            Turbidity
+                        </button>
+                        <button class="param-btn" data-param="Conductivity">
+                            Conductivity
+                        </button>
+                        <button class="param-btn" data-param="Ammonia">
+                            Ammonia
+                        </button>
+                        <button class="param-btn" data-param="Nitrate">
+                            Nitrate
+                        </button>
+                        <button class="param-btn" data-param="Phosphate">
+                            Phosphate
+                        </button>
+                        <button class="param-btn" data-param="Chlorophyll">
+                            Chlorophyll
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DOCUMENTS PAGE -->
+
+        <div class="data-page" id="documentsPage" style="display: none">
+            <div class="container">
+                <h1>Project Documents</h1>
+                <p class="page-intro">
+                    Reference documents, reports, and supporting materials for
+                    this water quality monitoring university project.
+                </p>
+
+                <div class="doc-grid">
+                    <div class="doc-card">
+                        <div class="doc-icon">📄</div>
+                        <div class="doc-info">
+                            <h3>Project Report</h3>
+                            <p>
+                                Full academic report covering methodology, data
+                                sources, and analysis findings for the water
+                                quality monitoring study.
+                            </p>
+                            <span class="doc-meta"
+                                >PDF · Last updated March 2026</span
+                            >
+                        </div>
+                        <a class="doc-btn" href="#">Download</a>
+                    </div>
+
+                    <div class="doc-card">
+                        <div class="doc-icon">📊</div>
+                        <div class="doc-info">
+                            <h3>Data Dictionary</h3>
+                            <p>
+                                Definitions of all water quality parameters,
+                                measurement units, and data flags used in this
+                                dashboard.
+                            </p>
+                            <span class="doc-meta"
+                                >PDF · Last updated March 2026</span
+                            >
+                        </div>
+                        <a class="doc-btn" href="#">Download</a>
+                    </div>
+
+                    <div class="doc-card">
+                        <div class="doc-icon">🗺️</div>
+                        <div class="doc-info">
+                            <h3>GIS Methodology</h3>
+                            <p>
+                                Documentation of spatial data collection,
+                                GeoServer setup, catchment boundary definitions,
+                                and station placement.
+                            </p>
+                            <span class="doc-meta"
+                                >PDF · Last updated February 2026</span
+                            >
+                        </div>
+                        <a class="doc-btn" href="#">Download</a>
+                    </div>
+
+                    <div class="doc-card">
+                        <div class="doc-icon">📋</div>
+                        <div class="doc-info">
+                            <h3>South African Water Quality Standards</h3>
+                            <p>
+                                Reference document for national water quality
+                                guidelines and threshold values used to
+                                interpret monitoring data.
+                            </p>
+                            <span class="doc-meta"
+                                >External Reference · DWS</span
+                            >
+                        </div>
+                        <a
+                            class="doc-btn"
+                            href="https://www.dws.gov.za"
+                            target="_blank"
+                            >Visit</a
+                        >
+                    </div>
+
+                    <div class="doc-card">
+                        <div class="doc-icon">🎓</div>
+                        <div class="doc-info">
+                            <h3>University Project Brief</h3>
+                            <p>
+                                The original assignment brief outlining scope,
+                                objectives, and requirements for this GIS water
+                                quality dashboard project.
+                            </p>
+                            <span class="doc-meta"
+                                >PDF · Academic year 2025/26</span
+                            >
+                        </div>
+                        <a class="doc-btn" href="#">Download</a>
+                    </div>
+
+                    <div class="doc-card">
+                        <div class="doc-icon">⚙️</div>
+                        <div class="doc-info">
+                            <h3>Technical Setup Guide</h3>
+                            <p>
+                                Instructions for deploying this dashboard
+                                including GeoServer configuration and GitHub
+                                Pages deployment steps.
+                            </p>
+                            <span class="doc-meta">Markdown · GitHub</span>
+                        </div>
+                        <a class="doc-btn" href="#">Download</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- METADATA PAGE -->
+
+        <div class="metadata-page" id="metadataPage" style="display: none">
+            <div class="container">
+                <h1>Metadata Catalogue</h1>
+
+                <p>
+                    Water quality monitoring metadata catalogue with data
+                    previews and service endpoints.
+                </p>
+
+                <!-- CATCHMENTS LAYER -->
+                <div class="metadata-section">
+                    <h2>Catchments</h2>
+
+                    <div class="data-preview">
+                        <h3>Data Preview</h3>
+                        <table class="preview-table">
+                            <thead>
+                                <tr>
+                                    <th>Catchment Name</th>
+                                    <th>Area (km²)</th>
+                                    <th>River System</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Upper Vaal</td>
+                                    <td>36,650</td>
+                                    <td>Vaal River</td>
+                                </tr>
+                                <tr>
+                                    <td>Orange River</td>
+                                    <td>973,000</td>
+                                    <td>Orange River</td>
+                                </tr>
+                                <tr>
+                                    <td>Breede River</td>
+                                    <td>12,384</td>
+                                    <td>Breede River</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="description">
+                        <h3>Description</h3>
+                        <p>
+                            River catchment boundaries defining the geographical
+                            areas for water quality monitoring. These polygons
+                            represent the drainage basins for major river
+                            systems in South Africa, used for spatial analysis
+                            and reporting of water quality data.
+                        </p>
+                    </div>
+
+                    <div class="metadata-info">
+                        <h3>Metadata</h3>
+                        <ul>
+                            <li>
+                                <strong>Format:</strong> GeoJSON / Shapefile
+                            </li>
+                            <li>
+                                <strong>Coordinate System:</strong> WGS84
+                                (EPSG:4326)
+                            </li>
+                            <li><strong>Last Updated:</strong> March 2026</li>
+                            <li>
+                                <strong>Data Source:</strong> Department of
+                                Water and Sanitation
+                            </li>
+                            <li><strong>Update Frequency:</strong> Annual</li>
+                        </ul>
+                    </div>
+
+                    <div class="service-links">
+                        <h3>Service Endpoints</h3>
+                        <p>
+                            <strong>WFS URL:</strong>
+                            <a
+                                href="https://YOUR_GEOSERVER_URL/geoserver/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=workspace:catchments"
+                                target="_blank"
+                                >https://YOUR_GEOSERVER_URL/geoserver/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=workspace:catchments</a
+                            >
+                        </p>
+                        <p>
+                            <strong>WMS URL:</strong>
+                            <a
+                                href="https://YOUR_GEOSERVER_URL/geoserver/wms?service=WMS&version=1.3.0&request=GetMap&layers=workspace:catchments&bbox=-35,-25,15,35&width=800&height=600&srs=EPSG:4326&format=image/png"
+                                target="_blank"
+                                >WMS GetMap</a
+                            >
+                        </p>
+                    </div>
+                </div>
+
+                <!-- MONITORING STATIONS LAYER -->
+                <div class="metadata-section">
+                    <h2>Monitoring Stations</h2>
+
+                    <div class="data-preview">
+                        <h3>Data Preview</h3>
+                        <table class="preview-table">
+                            <thead>
+                                <tr>
+                                    <th>Station ID</th>
+                                    <th>Name</th>
+                                    <th>Catchment</th>
+                                    <th>Latitude</th>
+                                    <th>Longitude</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>station_1</td>
+                                    <td>Station A</td>
+                                    <td>Upper Vaal</td>
+                                    <td>-33.92</td>
+                                    <td>18.42</td>
+                                </tr>
+                                <tr>
+                                    <td>station_2</td>
+                                    <td>Station B</td>
+                                    <td>Orange River</td>
+                                    <td>-33.88</td>
+                                    <td>18.55</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="description">
+                        <h3>Description</h3>
+                        <p>
+                            Point locations of water quality monitoring stations
+                            across South African river systems. Each station
+                            represents a sampling location where regular water
+                            quality measurements are taken for various
+                            parameters including E.coli, nutrients, and
+                            physico-chemical properties.
+                        </p>
+                    </div>
+
+                    <div class="metadata-info">
+                        <h3>Metadata</h3>
+                        <ul>
+                            <li>
+                                <strong>Format:</strong> GeoJSON / Point
+                                Features
+                            </li>
+                            <li>
+                                <strong>Coordinate System:</strong> WGS84
+                                (EPSG:4326)
+                            </li>
+                            <li><strong>Last Updated:</strong> March 2026</li>
+                            <li>
+                                <strong>Data Source:</strong> Department of
+                                Water and Sanitation
+                            </li>
+                            <li>
+                                <strong>Update Frequency:</strong> As needed
+                            </li>
+                            <li>
+                                <strong>Total Stations:</strong> 2 (sample data)
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="service-links">
+                        <h3>Service Endpoints</h3>
+                        <p>
+                            <strong>WFS URL:</strong>
+                            <a
+                                href="https://YOUR_GEOSERVER_URL/geoserver/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=workspace:stations"
+                                target="_blank"
+                                >https://YOUR_GEOSERVER_URL/geoserver/wfs?service=WFS&version=1.1.0&request=GetFeature&typeName=workspace:stations</a
+                            >
+                        </p>
+                        <p>
+                            <strong>WMS URL:</strong>
+                            <a
+                                href="https://YOUR_GEOSERVER_URL/geoserver/wms?service=WMS&version=1.3.0&request=GetMap&layers=workspace:stations&bbox=-35,-25,15,35&width=800&height=600&srs=EPSG:4326&format=image/png"
+                                target="_blank"
+                                >WMS GetMap</a
+                            >
+                        </p>
+                    </div>
+                </div>
+
+                <!-- WATER QUALITY READINGS -->
+                <div class="metadata-section">
+                    <h2>Water Quality Readings</h2>
+
+                    <div class="data-preview">
+                        <h3>Data Preview</h3>
+                        <table class="preview-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Station</th>
+                                    <th>E.coli</th>
+                                    <th>pH</th>
+                                    <th>Dissolved Oxygen</th>
+                                    <th>Nitrogen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>2017/09/14 09:32:51</td>
+                                    <td>Station A</td>
+                                    <td>120</td>
+                                    <td>7.3</td>
+                                    <td>8.2</td>
+                                    <td>1.5</td>
+                                </tr>
+                                <tr>
+                                    <td>2018/02/18 14:15:22</td>
+                                    <td>Station A</td>
+                                    <td>95</td>
+                                    <td>7.4</td>
+                                    <td>8.5</td>
+                                    <td>1.2</td>
+                                </tr>
+                                <tr>
+                                    <td>2026/03/23 09:15:27</td>
+                                    <td>Station A</td>
+                                    <td>160</td>
+                                    <td>7.0</td>
+                                    <td>7.4</td>
+                                    <td>1.9</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="description">
+                        <h3>Description</h3>
+                        <p>
+                            Time-series water quality monitoring data collected
+                            from river monitoring stations. Includes
+                            microbiological, nutrient, and physico-chemical
+                            parameters measured according to national water
+                            quality standards and guidelines.
+                        </p>
+                    </div>
+
+                    <div class="metadata-info">
+                        <h3>Metadata</h3>
+                        <ul>
+                            <li><strong>Format:</strong> JSON / CSV</li>
+                            <li>
+                                <strong>Parameters:</strong> 10 water quality
+                                indicators
+                            </li>
+                            <li><strong>Last Updated:</strong> March 2026</li>
+                            <li>
+                                <strong>Data Source:</strong> Department of
+                                Water and Sanitation
+                            </li>
+                            <li><strong>Update Frequency:</strong> Monthly</li>
+                            <li>
+                                <strong>Measurement Units:</strong> Various (see
+                                parameter definitions)
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="service-links">
+                        <h3>Service Endpoints</h3>
+                        <p>
+                            <strong>REST API:</strong>
+                            <a
+                                href="https://YOUR_GEOSERVER_URL/api/water-quality/readings"
+                                target="_blank"
+                                >https://YOUR_GEOSERVER_URL/api/water-quality/readings</a
+                            >
+                        </p>
+                        <p>
+                            <strong>Download CSV:</strong>
+                            <a
+                                href="https://YOUR_GEOSERVER_URL/api/water-quality/export?format=csv"
+                                target="_blank"
+                                >Export as CSV</a
+                            >
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Libraries loaded here so DOM is ready before inline script runs -->
+        <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+        <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+        <script>
+            // TAB SWITCHING
+            function showTab(tab) {
+                document
+                    .querySelectorAll(".nav-tabs button")
+                    .forEach((btn) => btn.classList.remove("active"));
+
+                // Hide all pages
+                document.getElementById("mapLayout").style.display = "none";
+                document.getElementById("documentsPage").style.display = "none";
+                document.getElementById("metadataPage").style.display = "none";
+
+                if (tab === "map") {
+                    document
+                        .querySelectorAll(".nav-tabs button")[0]
+                        .classList.add("active");
+                    document.getElementById("mapLayout").style.display = "flex";
+                }
+
+                if (tab === "documents") {
+                    document
+                        .querySelectorAll(".nav-tabs button")[1]
+                        .classList.add("active");
+                    document.getElementById("documentsPage").style.display =
+                        "block";
+                }
+
+                if (tab === "metadata") {
+                    document
+                        .querySelectorAll(".nav-tabs button")[2]
+                        .classList.add("active");
+                    document.getElementById("metadataPage").style.display =
+                        "block";
+                }
+            }
+            window.addEventListener("DOMContentLoaded", function () {
+                // Listen for station clicks from the qgis2web iframe
+                window.addEventListener("message", function (event) {
+                    if (!event.data || event.data.type !== "stationClick")
+                        return;
+                    var d = event.data;
+
+                    // Update sidebar
+                    document.getElementById("stationName").innerText =
+                        d.stationName || "—";
+                    document.getElementById("stationCatchment").innerText =
+                        d.catchment || "—";
+
+                    // Populate extra fields if they exist
+                    var locEl = document.getElementById("stationLocation");
+                    var wtEl = document.getElementById("stationWaterType");
+                    var mtEl = document.getElementById("stationMonitorType");
+                    if (locEl) locEl.innerText = d.location || "—";
+                    if (wtEl) wtEl.innerText = d.waterType || "—";
+                    if (mtEl) mtEl.innerText = d.monitorType || "—";
+
+                    // Update chart
+                    currentStation = d.stationId;
+                    updateLatestReading();
+                    updateChart();
+                });
+
+                // MAP is rendered in the qgis2web iframe
+
+                // FILTER EVENTS
+
+                document
+                    .getElementById("catchmentFilter")
+                    .addEventListener("change", renderStations);
+
+                document
+                    .getElementById("fromDate")
+                    .addEventListener("change", () => {
+                        updateLatestReading();
+                        updateChart();
+                    });
+
+                document
+                    .getElementById("toDate")
+                    .addEventListener("change", () => {
+                        updateLatestReading();
+                        updateChart();
+                    });
+
+                // Parameter button events
+                document.querySelectorAll(".param-btn").forEach((btn) => {
+                    btn.addEventListener("click", (e) => {
+                        document
+                            .querySelectorAll(".param-btn")
+                            .forEach((b) => b.classList.remove("active"));
+                        e.target.classList.add("active");
+                        updateLatestReading();
+                        updateChart();
+                    });
+                });
+
+                // INITIAL LOAD
+
+                renderStations();
+
+                updateLatestReading();
+                updateChart();
+            }); // end DOMContentLoaded
+        </script>
+    </body>
+</html>
+``` ## Replace This Before Deployment Replace: ```js
+https://YOUR_GEOSERVER_URL/geoserver/wms ``` with your Azure VM GeoServer URL.
+Example: ```js https://gis.yourdomain.com/geoserver/wms ``` --- ## GitHub Pages
+Deployment 1. Create GitHub repository 2. Upload `index.html` 3. Go to: *
+Settings * Pages 4. Select: * Deploy from branch 5. Save Your dashboard will be
+live. --- ## Current Features Included * Leaflet interactive map * GeoServer WMS
+support * Government dashboard layout * Top navigation tabs * Metadata catalogue
+page * Catchment filtering * Water quality parameter switching * ECharts
+time-series graph * Responsive layout * Station popups * Dynamic chart updates *
+Downloadable chart images * Zoomable graph timeline --- ## Recommended Next
+Improvements * WFS station loading * Dynamic GeoJSON filtering * CSV export *
+Legend control * Layer switcher * Mobile sidebar toggle * Time slider *
+Threshold alerts * Heatmaps * Authentication
